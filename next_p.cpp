@@ -15,10 +15,23 @@ int my_rand(int a, int b) {
     return rnd_int(rnd_eng);
 }
 
+enum {
+    SUM = 1, SET = 2, INSERT = 3, NEXT_PERM = 4
+};
 
-class Treap {
+class Solver {
+public:
+    virtual ~Solver()=0;
+    virtual int sum(size_t left, size_t right)=0;
+    virtual void set_el(int x, size_t pos)=0;
+    virtual void add(size_t pos, int elemX)=0;
+    virtual void NextP(size_t left, size_t right)=0;
+    virtual void init_array(const std::vector<int> &input)=0;
+};
+Solver::~Solver(){}
+
+class Treap : virtual public Solver {
 private:
-
     struct Node {
         int key;
         int  prior;
@@ -240,8 +253,15 @@ private:
         }
         node->update_count();
     }
-public:
 
+    void BuildTreap(const std::vector<int> &input) {
+        this->head = BuildNode(input, 0, input.size() - 1);
+    }
+public:
+    ~Treap() {
+        free_node(head);
+        head = NULL;
+    }
     Treap(Node *node = NULL) {
         head = node;
     }
@@ -261,13 +281,12 @@ public:
         head = Merge(Merge(LeftNode, MediumNode), RightNode);
     }
 
-    Treap * BuildTreap(const std::vector<int> &input) {
-        Treap * tmp = new Treap();
-        tmp->head = BuildNode(input, 0, input.size() - 1);
-        return tmp;
+    void init_array(const std::vector<int> &input) {
+        BuildTreap(input);
     }
 
-    void add(int pos, int elemX) {
+    void add(size_t pos, int elemX) {
+        pos--;
         Node * l;
         Node * r;
         Split(head, pos, l, r);
@@ -275,7 +294,8 @@ public:
         head = Merge(Merge(l, m), r);
     }
 
-    void set_el(int x, int pos) {
+    void set_el(int x, size_t pos) {
+        pos--;
         set(head, x, pos);
     }
 
@@ -291,7 +311,7 @@ public:
     }
 
     void NextP(size_t left, size_t right){
-
+        left--;
 
 
         Node * LeftNode;
@@ -329,6 +349,7 @@ public:
     }
 
     int sum(size_t left, size_t right) {
+        left--;
         Node * LeftNode;
         Node * MediumNode;
         Node * RightNode;
@@ -339,107 +360,70 @@ public:
 
         return res;
     }
+};
 
-    void free_treap() {
-        free_node(this->head);
-        head = NULL;
+class StupidSolver : virtual public Solver {
+private:
+    std::vector<int> data;
+public:
+    ~StupidSolver() {
+        data.clear();
+        delete(&data);
     }
-};
+    int sum(size_t left, size_t right) {
+        return std::accumulate(data.begin() + left - 1, data.begin() + right, 0);
+    }
+    void set_el(int x, size_t pos) {
+        data[pos - 1] = x;
+    }
+    void add(size_t pos, int elemX) {
+        data.insert(data.begin() + pos - 1, elemX);
+    }
 
-class Solution {
-public:
-    virtual std::vector<int> Solve(const std::vector<int> &input){};
-};
+    void NextP(size_t left, size_t right) {
+        std::next_permutation(&data[left - 1], &data[right]);
+    }
 
-
-class TreeSolution:public Solution {
-public:
-     virtual std::vector<int> Solve(const std::vector<int> &input) {
-        Treap * tree = new Treap(NULL);
-        std::vector<int> output;
-        int j = 0;
-        std::vector<int> quick_realization;
-        int n = input[j++];
-
-        quick_realization.resize(n);
-
-        for(size_t i = 0; i < n; ++i)
-           quick_realization[i] = input[j++];
-
-        Treap * Tree = new Treap(NULL);
-
-        Tree = Tree->BuildTreap(quick_realization);
-
-        int m = input[j++];
-        for(size_t i = 0; i < m; ++i) {
-            int tmp, x, y;
-            tmp = input[j++];
-            x = input[j++];
-            y = input[j++];
-
-            if (tmp == 1) {
-                output.push_back(Tree->sum(x - 1, y));
-            }
-            if (tmp == 2) {
-                Tree->set_el(x, y - 1);
-
-            }
-            if (tmp == 3) {
-                Tree->add(y - 1, x);
-
-            }
-            if (tmp == 4) {
-                Tree->NextP(x - 1, y);
-
-            }
-
+    void init_array(const std::vector<int> &input) {
+        if (input.size() == 0) {
+            data.clear();
+            return;
         }
-
-        Tree->free_treap();
-        return output;
+        data.resize(input.size());
+        std::copy(input.begin(), input.end(), data.begin());
     }
 };
 
-class VectorSolution:public Solution {
-public:
-    virtual std::vector<int> Solve(const std::vector<int> &input) {
-        std::vector<int> output;
-        int j = 0;
-        std::vector<int> slow_realization;
-        int n = input[j++];
+std::vector<int> solve(const std::vector<int> &input, Solver* solver) {
+    std::vector<int> output;
+    int j = 0;
+    std::vector<int> in_arr;
+    int n = input[j++];
+    in_arr.resize(n);
 
-       slow_realization.resize(n);
+    for(size_t i = 0; i < n; ++i)
+        in_arr[i] = input[j++];
 
-        for(size_t i = 0; i < n; ++i)
-            slow_realization[i] = input[j++];
-        int m = input[j++];
-        for(size_t i = 0; i < m; ++i) {
-            int tmp, x, y;
-            tmp = input[j++];
-            x = input[j++];
-            y = input[j++];
-
-            if (tmp == 1) {
-                int s = 0;
-                for(size_t k = x - 1; k < y; ++k)
-                    s += slow_realization[k];
-                output.push_back(s);
-            }
-            if (tmp == 2)
-                slow_realization[y - 1] = x;
-            if (tmp == 3) {
-                slow_realization.insert(slow_realization.begin() + y - 1, x);
-
-            }
-            if (tmp == 4)
-                std::next_permutation(&slow_realization[x - 1], &slow_realization[y]);
+    solver->init_array(in_arr);
+    int m = input[j++];
+    for(size_t i = 0; i < m; ++i) {
+        int tmp, x, y;
+        tmp = input[j++];
+        x = input[j++];
+        y = input[j++];
+        if (tmp == SUM) {
+            output.push_back(solver->sum(x, y));
         }
-
-        return output;
-
+        if (tmp == SET)
+            solver->set_el(x, y);
+        if (tmp == INSERT) {
+            solver->add(y, x);
+        }
+        if (tmp == NEXT_PERM)
+            solver->NextP(x, y);
     }
-
-};
+    return output;
+}
 
 std::vector<int> Test(size_t m, int mn, int mx) {
     std::vector<int> input;
@@ -450,7 +434,7 @@ std::vector<int> Test(size_t m, int mn, int mx) {
     input.push_back(m);
     for(size_t i = 0; i < m; ++i) {
         input.push_back(my_rand(1, 4));
-        if (input.back() == 1 || input.back() == 4) {
+        if (input.back() == SUM || input.back() == NEXT_PERM) {
             input.push_back(my_rand(1, n));
             input.push_back(my_rand(input.back(), n));
         }
@@ -464,11 +448,6 @@ std::vector<int> Test(size_t m, int mn, int mx) {
     return input;
 };
 
-template <class Solver>
-std::vector<int> Solve(const std::vector<int> &input, Solver solver) {
-    return solver.Solve(input);
-}
-
 void printv(std::vector<int> a) {
     for (int i = 0; i < a.size(); i++) {
         std::cout << a[i] << ' ';
@@ -479,10 +458,13 @@ void printv(std::vector<int> a) {
 bool tests(size_t n) {
     for(size_t i = 0; i < n; ++i) {
         int l = my_rand(1, 10);
+        Solver* tmp1 = new StupidSolver();
+        Solver* tmp2 = new Treap();
         std::vector<int> input = Test(my_rand(1, 10), l, my_rand(l, 10));
-        std::vector<int> output_vector = Solve(input, VectorSolution());
-        std::vector<int> output_tree = Solve(input, TreeSolution());
-
+        std::vector<int> output_vector = solve(input, tmp1);
+        delete(tmp1);
+        std::vector<int> output_tree = solve(input, tmp2);
+        delete(tmp2);
         if (output_tree != output_vector) {
             printv(input);
             printv(output_tree);
@@ -490,6 +472,7 @@ bool tests(size_t n) {
             std::cout << ":(((\n";
             return false;
         }
+
     }
     return true;
 }
